@@ -16,148 +16,182 @@ class Files { //FIXME: There's some code duplication between this and `embedded`
   rootPaths = undefined;
   filesData = undefined; // { [filePath]: todo | undefined }
   watcher: vscode.FileSystemWatcher = undefined;
+  context: vscode.ExtensionContext = undefined;
+  cachedFilePaths: string[] = undefined;
 
-  async get ( rootPaths = Folder.getAllRootPaths () ) {
+  setContext(context: vscode.ExtensionContext) {
+    this.context = context;
+    this.cachedFilePaths = context.workspaceState.get<string[]>('todoFilePaths');
+  }
 
-    rootPaths = _.castArray ( rootPaths );
+  async get(rootPaths = Folder.getAllRootPaths()) {
 
-    const config = Config.get ();
+    rootPaths = _.castArray(rootPaths);
+
+    const config = Config.get();
 
     this.include = config.file.include;
     this.exclude = config.file.exclude;
 
-    if ( !this.filesData || !_.isEqual ( this.rootPaths, rootPaths ) ) {
+    if (!this.filesData || !_.isEqual(this.rootPaths, rootPaths)) {
 
       this.rootPaths = rootPaths;
-      this.unwatchPaths ();
-      await this.initFilesData ( rootPaths );
-      this.watchPaths ();
+      this.unwatchPaths();
+      await this.initFilesData(rootPaths);
+      this.watchPaths();
 
     } else {
 
-      await this.updateFilesData ();
+      await this.updateFilesData();
 
     }
 
-    this.updateContext ();
+    this.updateContext();
 
-    return this.getTodos ();
+    return this.getTodos();
 
   }
 
-  async watchPaths () {
+  async rescan() {
+    // Clear cache and force rescan
+    this.cachedFilePaths = undefined;
+    this.filesData = undefined;
+    if (this.context) {
+      await this.context.workspaceState.update('todoFilePaths', undefined);
+    }
+    FilesView.refresh(true);
+  }
+
+  async watchPaths() {
 
     /* HELPERS */
 
-    const pathNormalizer = filePath => filePath.replace ( /\\/g, '/' );
+    const pathNormalizer = filePath => filePath.replace(/\\/g, '/');
 
     /* HANDLERS */
 
-    const refresh = _.debounce ( () => FilesView.refresh (), 250 );
+    const refresh = _.debounce(() => FilesView.refresh(), 250);
 
     const add = event => {
-      console.log('add',event.fsPath);
-      if ( !this.filesData ) return;
-      const filePath = pathNormalizer ( event.fsPath );
-      if ( this.filesData.hasOwnProperty ( filePath ) ) return;
-      if ( !this.isIncluded ( filePath ) ) return;
+      if (!this.filesData) return;
+      const filePath = pathNormalizer(event.fsPath);
+      if (this.filesData.hasOwnProperty(filePath)) return;
+      if (!this.isIncluded(filePath)) return;
       this.filesData[filePath] = undefined;
-      refresh ();
+      this.saveCache();
+      refresh();
     };
 
     const change = event => {
-      console.log('change',event.fsPath);
-      if ( !this.filesData ) return;
-      const filePath = pathNormalizer ( event.fsPath );
-      if ( !this.isIncluded ( filePath ) ) return;
+      if (!this.filesData) return;
+      const filePath = pathNormalizer(event.fsPath);
+      if (!this.isIncluded(filePath)) return;
       this.filesData[filePath] = undefined;
-      refresh ();
+      refresh();
     };
 
     const unlink = event => {
-      console.log('unlink',event.fsPath);
-      if ( !this.filesData ) return;
-      const filePath = pathNormalizer ( event.fsPath );
+      if (!this.filesData) return;
+      const filePath = pathNormalizer(event.fsPath);
       delete this.filesData[filePath];
-      refresh ();
+      this.saveCache();
+      refresh();
     };
 
     /* WATCHING */
 
-    this.include.forEach ( glob => {
+    this.include.forEach(glob => {
 
-      this.watcher = vscode.workspace.createFileSystemWatcher ( glob );
+      this.watcher = vscode.workspace.createFileSystemWatcher(glob);
 
-      this.watcher.onDidCreate ( add );
-      this.watcher.onDidChange ( change );
-      this.watcher.onDidDelete ( unlink );
+      this.watcher.onDidCreate(add);
+      this.watcher.onDidChange(change);
+      this.watcher.onDidDelete(unlink);
 
     });
 
   }
 
-  unwatchPaths () {
+  unwatchPaths() {
 
-    if ( !this.watcher ) return;
+    if (!this.watcher) return;
 
-    this.watcher.dispose ();
-
-  }
-
-  getIncluded ( filePaths ) {
-
-    const micromatch = require ( 'micromatch' ); // Lazy import for performance
-
-    return micromatch ( filePaths, this.include, { ignore: this.exclude, dot: true } );
+    this.watcher.dispose();
 
   }
 
-  isIncluded ( filePath ) {
+  getIncluded(filePaths) {
 
-    return !!this.getIncluded ([ filePath ]).length;
+    const micromatch = require('micromatch'); // Lazy import for performance
 
-  }
-
-  async getFilePaths ( rootPaths ): Promise<string[]> {
-
-    const globby = require ( 'globby' ); // Lazy import for performance
-
-    return _.flatten ( await Promise.all ( rootPaths.map ( cwd => globby ( this.include, { cwd, ignore: this.exclude, dot: true, absolute: true } ) ) ) ) as string[]; //TSC
+    return micromatch(filePaths, this.include, { ignore: this.exclude, dot: true });
 
   }
 
-  async initFilesData ( rootPaths ) {
+  isIncluded(filePath) {
 
-    const filePaths = await this.getFilePaths ( rootPaths );
+    return !!this.getIncluded([filePath]).length;
+
+  }
+
+  async getFilePaths(rootPaths): Promise<string[]> {
+
+    // Use cached paths if available
+    if (this.cachedFilePaths && this.cachedFilePaths.length > 0) {
+      return this.cachedFilePaths;
+    }
+
+    const globby = require('globby'); // Lazy import for performance
+
+    const filePaths = _.flatten(await Promise.all(rootPaths.map(cwd => globby(this.include, { cwd, ignore: this.exclude, dot: true, absolute: true })))) as string[]; //TSC
+
+    // Save to cache
+    this.cachedFilePaths = filePaths;
+    this.saveCache();
+
+    return filePaths;
+
+  }
+
+  async saveCache() {
+    if (this.context && this.filesData) {
+      const filePaths = Object.keys(this.filesData);
+      await this.context.workspaceState.update('todoFilePaths', filePaths);
+    }
+  }
+
+  async initFilesData(rootPaths) {
+
+    const filePaths = await this.getFilePaths(rootPaths);
 
     this.filesData = {};
 
-    await Promise.all ( filePaths.map ( async ( filePath: string ) => {
+    await Promise.all(filePaths.map(async (filePath: string) => {
 
-      this.filesData[filePath] = await this.getFileData ( filePath );
-
-    }));
-
-  }
-
-  async updateFilesData () {
-
-    if ( _.isEmpty ( this.filesData ) ) return;
-
-    await Promise.all ( _.map ( this.filesData, async ( val, filePath ) => {
-
-      if ( val ) return;
-
-      this.filesData[filePath] = await this.getFileData ( filePath );
+      this.filesData[filePath] = await this.getFileData(filePath);
 
     }));
 
   }
 
-  async getFileData ( filePath ) {
+  async updateFilesData() {
 
-    const parsedPath = Folder.parsePath ( filePath ),
-          textEditor = await vscode.workspace.openTextDocument ( filePath );
+    if (_.isEmpty(this.filesData)) return;
+
+    await Promise.all(_.map(this.filesData, async (val, filePath) => {
+
+      if (val) return;
+
+      this.filesData[filePath] = await this.getFileData(filePath);
+
+    }));
+
+  }
+
+  async getFileData(filePath) {
+
+    const parsedPath = Folder.parsePath(filePath),
+      textEditor = await vscode.workspace.openTextDocument(filePath);
 
     return {
       textEditor,
@@ -169,38 +203,38 @@ class Files { //FIXME: There's some code duplication between this and `embedded`
 
   }
 
-  getTodos () {
+  getTodos() {
 
-    if ( _.isEmpty ( this.filesData ) ) return;
+    if (_.isEmpty(this.filesData)) return;
 
     const todos = {}, // { [ROOT] { { [FILEPATH] => [DATA] } }
-          filePaths = Object.keys ( this.filesData );
+      filePaths = Object.keys(this.filesData);
 
-    filePaths.forEach ( filePath => {
+    filePaths.forEach(filePath => {
 
       const data = this.filesData[filePath];
 
-      if ( !data ) return;
+      if (!data) return;
 
-      if ( !todos[data.root] ) todos[data.root] = {};
+      if (!todos[data.root]) todos[data.root] = {};
 
       todos[data.root][filePath] = data;
 
     });
 
-    return this.simplifyTodos ( todos );
+    return this.simplifyTodos(todos);
 
   }
 
-  simplifyTodos ( obj ) {
+  simplifyTodos(obj) {
 
-    if ( _.isObject ( obj ) ) {
+    if (_.isObject(obj)) {
 
-      const keys = Object.keys ( obj );
+      const keys = Object.keys(obj);
 
-      if ( keys.length === 1 ) {
+      if (keys.length === 1) {
 
-        obj[''] = this.simplifyTodos ( obj[keys[0]] );
+        obj[''] = this.simplifyTodos(obj[keys[0]]);
 
       }
 
@@ -210,11 +244,11 @@ class Files { //FIXME: There's some code duplication between this and `embedded`
 
   }
 
-  updateContext () {
+  updateContext() {
 
-    const filesNr = Object.keys ( this.filesData ).length;
+    const filesNr = Object.keys(this.filesData).length;
 
-    vscode.commands.executeCommand ( 'setContext', 'todo-files-open-button', filesNr <= 1 );
+    vscode.commands.executeCommand('setContext', 'todo-files-open-button', filesNr <= 1);
 
   }
 
@@ -222,4 +256,4 @@ class Files { //FIXME: There's some code duplication between this and `embedded`
 
 /* EXPORT */
 
-export default new Files ();
+export default new Files();

@@ -35,6 +35,7 @@ const activate = function (context: vscode.ExtensionContext) {
   vscode.commands.executeCommand('setContext', 'todo-files-open-button', true);
 
   Utils.context = context;
+  Utils.files.setContext(context);
   Utils.folder.initRootsRe();
   Utils.init.language();
   Utils.init.views();

@@ -11,17 +11,17 @@ import Views from '../views';
 
 const Init = {
 
-  commands ( context: vscode.ExtensionContext ) {
+  commands(context: vscode.ExtensionContext) {
 
-    const {commands} = vscode.extensions.getExtension ( 'fabiospampinato.vscode-todo-plus' ).packageJSON.contributes;
+    const { commands } = vscode.extensions.getExtension('digizen.todozen').packageJSON.contributes;
 
-    commands.forEach ( ({ command, title }) => {
+    commands.forEach(({ command, title }) => {
 
-      const commandName = _.last ( command.split ( '.' ) ) as string,
-            handler = Commands[commandName],
-            disposable = vscode.commands.registerCommand ( command, handler );
+      const commandName = _.last(command.split('.')) as string,
+        handler = Commands[commandName],
+        disposable = vscode.commands.registerCommand(command, handler);
 
-      context.subscriptions.push ( disposable );
+      context.subscriptions.push(disposable);
 
     });
 
@@ -29,9 +29,9 @@ const Init = {
 
   },
 
-  language () {
+  language() {
 
-    vscode.languages.setLanguageConfiguration ( Consts.languageId, {
+    vscode.languages.setLanguageConfiguration(Consts.languageId, {
       wordPattern: /(-?\d*\.\d\w*)|([^\-\`\~\!\#\%\^\&\*\(\)\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
       indentationRules: {
         increaseIndentPattern: Consts.regexes.project,
@@ -41,14 +41,14 @@ const Init = {
 
   },
 
-  views () {
+  views() {
 
-    Views.forEach ( View => {
-      vscode.window.registerTreeDataProvider ( View.id, View );
+    Views.forEach(View => {
+      vscode.window.registerTreeDataProvider(View.id, View);
     });
 
-    vscode.workspace.onDidChangeConfiguration ( () => {
-      Views.forEach ( View => View.refresh () );
+    vscode.workspace.onDidChangeConfiguration(() => {
+      Views.forEach(View => View.refresh());
     });
 
   }

@@ -778,6 +778,11 @@
       {
         "command": "todo.editorArchive",
         "title": "Archive"
+      },
+      {
+        "command": "todo.rescan",
+        "title": "Todo: Rescan Files",
+        "icon": "$(refresh)"
       }
     ],
     "keybindings": [
@@ -950,6 +955,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "todo.rescan",
+          "when": "view == todo.views.1files",
+          "group": "navigation@0"
+        },
         {
           "command": "todo.viewFilesOpen",
           "when": "view == todo.views.1files && todo-files-open-button == true",
