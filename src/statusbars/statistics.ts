@@ -11,31 +11,31 @@ class Statistics {
 
   item; itemProps; config; tokens;
 
-  constructor () {
+  constructor() {
 
-    this.item = this._initItem ();
+    this.item = this._initItem();
     this.itemProps = {};
 
-    this.update ();
+    this.update();
 
   }
 
-  _initItem () {
+  _initItem() {
 
-    const alignment = Config.getKey ( 'statistics.statusbar.alignment' ) === 'right' ? vscode.StatusBarAlignment.Right : vscode.StatusBarAlignment.Left,
-          priority = Config.getKey ( 'statistics.statusbar.priority' );
+    const alignment = Config.getKey('statistics.statusbar.alignment') === 'right' ? vscode.StatusBarAlignment.Right : vscode.StatusBarAlignment.Left,
+      priority = Config.getKey('statistics.statusbar.priority');
 
-    return vscode.window.createStatusBarItem ( alignment, priority );
+    return vscode.window.createStatusBarItem(alignment, priority);
 
   }
 
-  _setItemProp ( prop, value, _set = true ) {
+  _setItemProp(prop, value, _set = true) {
 
-    if ( this.itemProps[prop] === value ) return false;
+    if (this.itemProps[prop] === value) return false;
 
     this.itemProps[prop] = value;
 
-    if ( _set ) {
+    if (_set) {
 
       this.item[prop] = value;
 
@@ -45,66 +45,66 @@ class Statistics {
 
   }
 
-  update () {
+  update() {
 
-    this.config = Config.get ();
+    this.config = Config.get();
     this.tokens = Utils.statistics.tokens.global;
 
-    this.updateVisibility ();
+    this.updateVisibility();
 
-    if ( !this.itemProps.visibility ) return;
+    if (!this.itemProps.visibility) return;
 
-    this.updateColor ();
-    this.updateCommand ();
-    this.updateTooltip ();
-    this.updateText ();
-
-  }
-
-  updateColor () {
-
-    const {color} = this.config.statistics.statusbar;
-
-    this._setItemProp ( 'color', color );
+    this.updateColor();
+    this.updateCommand();
+    this.updateTooltip();
+    this.updateText();
 
   }
 
-  updateCommand () {
+  updateColor() {
 
-    const {command} = this.config.statistics.statusbar;
+    const { color } = this.config.statistics.statusbar;
 
-    this._setItemProp ( 'command', command );
+    this._setItemProp('color', color);
 
   }
 
-  updateTooltip () {
+  updateCommand() {
+
+    const { command } = this.config.statistics.statusbar;
+
+    this._setItemProp('command', command || undefined);
+
+  }
+
+  updateTooltip() {
 
     let template = this.config.statistics.statusbar.tooltip,
-        tooltip = Utils.statistics.template.render ( template, this.tokens );
+      tooltip = Utils.statistics.template.render(template, this.tokens);
 
-    if ( !tooltip ) return;
+    if (!tooltip) return;
 
-    this._setItemProp ( 'tooltip', tooltip );
+    this._setItemProp('tooltip', tooltip);
 
   }
 
-  updateText () {
+  updateText() {
 
     let template = this.config.statistics.statusbar.text,
-        text = Utils.statistics.template.render ( template, this.tokens );
+      text = Utils.statistics.template.render(template, this.tokens);
 
-    if ( !text ) return;
+    if (!text) return;
 
-    this._setItemProp ( 'text', text );
+    this._setItemProp('text', text);
 
   }
 
-  updateVisibility () {
+  updateVisibility() {
 
     const condition = this.config.statistics.statusbar.enabled,
-          visibility = Utils.editor.isSupported ( vscode.window.activeTextEditor ) && Utils.statistics.condition.is ( condition, this.tokens, undefined );
+      visibility = Utils.editor.isSupported(vscode.window.activeTextEditor) && Utils.statistics.condition.is(condition, this.tokens, undefined);
 
-    if ( this._setItemProp ( 'visibility', visibility ) ) {
+    if (this._setItemProp('visibility', visibility)) {
 
       this.item[visibility ? 'show' : 'hide']();
 
@@ -116,4 +116,4 @@ class Statistics {
 
 /* EXPORT */
 
-export default new Statistics ();
+export default new Statistics();

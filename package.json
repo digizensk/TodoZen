@@ -1,12 +1,12 @@
 {
-  "name": "vscode-todo-plus",
-  "displayName": "Todo+",
-  "description": "Manage todo lists with ease. Powerful, easy to use and customizable.",
+  "name": "todozen",
+  "displayName": "TodoZen",
+  "description": "Fork of Todo+ with performance improvements. Manage todo lists with ease. Powerful, easy to use and customizable. Original project by Fabio Spampinato.",
   "icon": "resources/logo/logo-128x128.png",
   "version": "4.19.1",
   "license": "MIT",
   "main": "out/extension.js",
-  "publisher": "fabiospampinato",
+  "publisher": "digizen",
   "activationEvents": [
     "*"
   ],
@@ -600,7 +600,10 @@
         },
         "todo.embedded.view.sort": {
           "type": "string",
-          "enum": ["line", "label"],
+          "enum": [
+            "line",
+            "label"
+          ],
           "description": "Sort todos either by label or by source line number",
           "default": "line"
         },
@@ -1055,7 +1058,8 @@
     "string-matches": "^1.1.3",
     "sugar-date": "^2.0.6",
     "to-time": "^1.0.2",
-    "vscode-beggar": "^1.0.0"
+    "vscode-beggar": "^1.0.0",
+    "vscode-ripgrep": "^1.13.2"
   },
   "devDependencies": {
     "ts-loader": "^5.2.1",

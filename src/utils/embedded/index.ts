@@ -14,16 +14,15 @@ import RG from './providers/rg';
 
 const Embedded = {
 
-  async initProvider () {
+  async initProvider() {
 
-    if ( Embedded.provider ) return;
+    if (Embedded.provider) return;
 
-    const {javascript, ag, rg} = Embedded.providers,
-          provider = Config.get ().embedded.provider,
-          // Provider = provider ? await Embedded.providers[provider]() || javascript () : await ag () || await rg () || javascript (); //FIXME: Trying to spawn "ag" or "rg" causes execa to never return, why is that?
-          Provider = javascript ();
+    const { javascript, ag, rg } = Embedded.providers,
+      provider = Config.get().embedded.provider,
+      Provider = provider ? await Embedded.providers[provider]() || javascript() : await ag() || await rg() || javascript();
 
-    Embedded.provider = new Provider ();
+    Embedded.provider = new Provider();
 
   },
 
@@ -31,32 +30,32 @@ const Embedded = {
 
   providers: {
 
-    javascript () {
+    javascript() {
 
       return JS;
 
     },
 
-    async ag () {
+    async ag() {
 
       try {
 
-        await execa ( 'ag', ['--version'] );
+        await execa('ag', ['--version']);
 
         return AG;
 
-      } catch ( e ) {}
+      } catch (e) { }
 
     },
 
-    async rg () {
+    async rg() {
 
-      const config = Config.get (),
-            lookaroundRe = /\(\?<?(!|=)/;
+      const config = Config.get(),
+        lookaroundRe = /\(\?<?(!|=)/;
 
-      if ( lookaroundRe.test ( config.embedded.providers.rg.regex ) ) {
+      if (lookaroundRe.test(config.embedded.providers.rg.regex)) {
 
-        vscode.window.showErrorMessage ( 'ripgrep doesn\'t support lookaheads and lookbehinds, you have to update your "todo.embedded.providers.rg.regex" setting if you want to use ripgrep' );
+        vscode.window.showErrorMessage('ripgrep doesn\'t support lookaheads and lookbehinds, you have to update your "todo.embedded.providers.rg.regex" setting if you want to use ripgrep');
 
         return;
 
@@ -64,30 +63,30 @@ const Embedded = {
 
       try {
 
-        await execa ( 'rg', ['--version'] );
+        await execa('rg', ['--version']);
 
         return RG;
 
-      } catch ( e ) {}
+      } catch (e) { }
 
-      const name = /^win/.test ( process.platform ) ? 'rg.exe' : 'rg',
-            basePath = path.dirname ( __dirname ),
-            filePaths = [
-              path.join ( basePath, `node_modules.asar.unpacked/vscode-ripgrep/bin/${name}` ),
-              path.join ( basePath, `node_modules/vscode-ripgrep/bin/${name}` )
-            ];
+      const name = /^win/.test(process.platform) ? 'rg.exe' : 'rg',
+        basePath = path.dirname(__dirname),
+        filePaths = [
+          path.join(basePath, `node_modules.asar.unpacked/vscode-ripgrep/bin/${name}`),
+          path.join(basePath, `node_modules/vscode-ripgrep/bin/${name}`)
+        ];
 
-      for ( let filePath of filePaths ) {
+      for (let filePath of filePaths) {
 
         try {
 
-          fs.accessSync ( filePath );
+          fs.accessSync(filePath);
 
           RG.bin = filePath;
 
           return RG;
 
-        } catch ( e ) {}
+        } catch (e) { }
 
       }
 

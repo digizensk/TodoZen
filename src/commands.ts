@@ -27,88 +27,88 @@ const callTodosMethodOptions = {
   }
 };
 
-async function callTodosMethod ( options? ) {
+async function callTodosMethod(options?) {
 
-  options = _.isString ( options ) ? { method: options } : options;
-  options = _.merge ( {}, callTodosMethodOptions, options );
+  options = _.isString(options) ? { method: options } : options;
+  options = _.merge({}, callTodosMethodOptions, options);
 
   const textEditor = vscode.window.activeTextEditor,
-        doc = new Document ( textEditor );
+    doc = new Document(textEditor);
 
-  if ( !doc.isSupported () ) return;
+  if (!doc.isSupported()) return;
 
-  const lines = _.uniq ( _.flatten ( textEditor.selections.map ( selection => _.range ( selection.start.line, selection.end.line + 1 ) ) ) ),
-        todos = _.filter ( lines.map ( line => doc.getTodoAt ( line, options.checkValidity ) ) );
+  const lines = _.uniq(_.flatten(textEditor.selections.map(selection => _.range(selection.start.line, selection.end.line + 1)))),
+    todos = _.filter(lines.map(line => doc.getTodoAt(line, options.checkValidity)));
 
-  if ( todos.length !== lines.length ) vscode.window.showErrorMessage ( options.errors.invalid );
+  if (todos.length !== lines.length) vscode.window.showErrorMessage(options.errors.invalid);
 
-  if ( !todos.length ) return;
+  if (!todos.length) return;
 
-  const todosFiltered = todos.filter ( options.filter );
+  const todosFiltered = todos.filter(options.filter);
 
-  if ( todosFiltered.length !== todos.length ) vscode.window.showErrorMessage ( options.errors.filtered );
+  if (todosFiltered.length !== todos.length) vscode.window.showErrorMessage(options.errors.filtered);
 
-  if ( !todosFiltered.length ) return;
+  if (!todosFiltered.length) return;
 
-  todosFiltered.map ( todo => todo[options.method]( ...options.args ) );
+  todosFiltered.map(todo => todo[options.method](...options.args));
 
-  const edits = _.filter ( _.flattenDeep ( todosFiltered.map ( todo => todo['makeEdit']() ) ) );
+  const edits = _.filter(_.flattenDeep(todosFiltered.map(todo => todo['makeEdit']())));
 
-  if ( !edits.length ) return;
+  if (!edits.length) return;
 
-  const selectionsTagIndexes = textEditor.selections.map ( selection => {
-    const line = textEditor.document.lineAt ( selection.start.line );
-    return line.text.indexOf ( Consts.symbols.tag );
+  const selectionsTagIndexes = textEditor.selections.map(selection => {
+    const line = textEditor.document.lineAt(selection.start.line);
+    return line.text.indexOf(Consts.symbols.tag);
   });
 
-  await Utils.editor.edits.apply ( textEditor, edits );
+  await Utils.editor.edits.apply(textEditor, edits);
 
-  textEditor.selections = textEditor.selections.map ( ( selection, index ) => { // Putting the cursors before first new tag
-    if ( selectionsTagIndexes[index] >= 0 ) return selection;
-    const line = textEditor.document.lineAt ( selection.start.line );
-    if ( selection.start.character !== line.text.length ) return selection;
-    const tagIndex = line.text.indexOf ( Consts.symbols.tag );
-    if ( tagIndex < 0 ) return selection;
-    const position = new vscode.Position ( selection.start.line, tagIndex );
-    return new vscode.Selection ( position, position );
+  textEditor.selections = textEditor.selections.map((selection, index) => { // Putting the cursors before first new tag
+    if (selectionsTagIndexes[index] >= 0) return selection;
+    const line = textEditor.document.lineAt(selection.start.line);
+    if (selection.start.character !== line.text.length) return selection;
+    const tagIndex = line.text.indexOf(Consts.symbols.tag);
+    if (tagIndex < 0) return selection;
+    const position = new vscode.Position(selection.start.line, tagIndex);
+    return new vscode.Selection(position, position);
   });
 
 }
 
 /* COMMANDS */
 
-async function open ( filePath?: string, lineNumber?: number ) {
+async function open(filePath?: string, lineNumber?: number) {
 
-  filePath = _.isString ( filePath ) ? filePath : undefined;
-  lineNumber = _.isNumber ( lineNumber ) ? lineNumber : undefined;
+  filePath = _.isString(filePath) ? filePath : undefined;
+  lineNumber = _.isNumber(lineNumber) ? lineNumber : undefined;
 
-  if ( filePath ) {
+  if (filePath) {
 
-    return Utils.file.open ( filePath, true, lineNumber );
+    return Utils.file.open(filePath, true, lineNumber);
 
   } else {
 
-    const config = Config.get (),
-          {activeTextEditor} = vscode.window,
-          editorPath = activeTextEditor && activeTextEditor.document.uri.fsPath,
-          rootPath = Utils.folder.getRootPath ( editorPath );
+    const config = Config.get(),
+      { activeTextEditor } = vscode.window,
+      editorPath = activeTextEditor && activeTextEditor.document.uri.fsPath,
+      rootPath = Utils.folder.getRootPath(editorPath);
 
-    if ( !rootPath ) return vscode.window.showErrorMessage ( 'You have to open a project before being able to open its todo file' );
+    if (!rootPath) return vscode.window.showErrorMessage('You have to open a project before being able to open its todo file');
 
-    const projectPath = ( ( await Utils.folder.getWrapperPathOf ( rootPath, editorPath || rootPath, config.file.name ) ) || rootPath ) as string,
-          todo = Utils.todo.get ( projectPath );
+    const projectPath = ((await Utils.folder.getWrapperPathOf(rootPath, editorPath || rootPath, config.file.name)) || rootPath) as string,
+      todo = Utils.todo.get(projectPath);
 
-    if ( !_.isUndefined ( todo ) ) { // Open
+    if (!_.isUndefined(todo)) { // Open
 
-      return Utils.file.open ( todo.path, true, lineNumber );
+      return Utils.file.open(todo.path, true, lineNumber);
 
     } else { // Create
 
-      const defaultPath = path.join ( projectPath, config.file.name );
+      const defaultPath = path.join(projectPath, config.file.name);
 
-      await Utils.file.make ( defaultPath, config.file.defaultContent );
+      await Utils.file.make(defaultPath, config.file.defaultContent);
 
-      return Utils.file.open ( defaultPath );
+      return Utils.file.open(defaultPath);
 
     }
 
@@ -116,43 +116,43 @@ async function open ( filePath?: string, lineNumber?: number ) {
 
 }
 
-async function openEmbedded () {
+async function openEmbedded() {
 
-  await Utils.embedded.initProvider ();
+  await Utils.embedded.initProvider();
 
-  const config = Config.get (),
-        todos = await Utils.embedded.provider.get ( undefined, config.embedded.file.groupByRoot, config.embedded.file.groupByType, config.embedded.file.groupByFile ),
-        content = Utils.embedded.provider.renderTodos ( todos );
+  const config = Config.get(),
+    todos = await Utils.embedded.provider.get(undefined, config.embedded.file.groupByRoot, config.embedded.file.groupByType, config.embedded.file.groupByFile),
+    content = Utils.embedded.provider.renderTodos(todos);
 
-  if ( !content ) return vscode.window.showInformationMessage ( 'No embedded todos found' );
+  if (!content) return vscode.window.showInformationMessage('No embedded todos found');
 
-  Utils.editor.open ( content );
-
-}
-
-function toggleBox () {
-
-  return callTodosMethod ( 'toggleBox' );
+  Utils.editor.open(content);
 
 }
 
-function toggleDone () {
+function toggleBox() {
 
-  return callTodosMethod ( 'toggleDone' );
-
-}
-
-function toggleCancelled () {
-
-  return callTodosMethod ( 'toggleCancelled' );
+  return callTodosMethod('toggleBox');
 
 }
 
-function toggleStart () {
+function toggleDone() {
 
-  return callTodosMethod ({
+  return callTodosMethod('toggleDone');
+
+}
+
+function toggleCancelled() {
+
+  return callTodosMethod('toggleCancelled');
+
+}
+
+function toggleStart() {
+
+  return callTodosMethod({
     checkValidity: true,
-    filter: todo => todo.isBox (),
+    filter: todo => todo.isBox(),
     method: 'toggleStart',
     errors: {
       invalid: 'Only todos can be started',
@@ -162,48 +162,48 @@ function toggleStart () {
 
 }
 
-function toggleTimer () {
+function toggleTimer() {
 
   Consts.timer = !Consts.timer;
 
-  StatusbarTimer.updateVisibility ();
-  StatusbarTimer.updateTimer ();
+  StatusbarTimer.updateVisibility();
+  StatusbarTimer.updateTimer();
 
-  vscode.window.showInformationMessage ( `Timer ${Consts.timer ? 'enabled' : 'disabled'}` );
+  vscode.window.showInformationMessage(`Timer ${Consts.timer ? 'enabled' : 'disabled'}`);
 
 }
 
-function archive () {
+function archive() {
 
   const textEditor = vscode.window.activeTextEditor,
-        doc = new Document ( textEditor );
+    doc = new Document(textEditor);
 
-  if ( !doc.isSupported () ) return;
+  if (!doc.isSupported()) return;
 
-  Utils.archive.run ( doc );
+  Utils.archive.run(doc);
 
 }
 
 /* VIEW */
 
-function viewOpenFile ( file: ItemFile ) {
+function viewOpenFile(file: ItemFile) {
 
-  Utils.file.open ( file.resourceUri.fsPath, true, 0 );
+  Utils.file.open(file.resourceUri.fsPath, true, 0);
 
 }
 
-function viewRevealTodo ( todo: ItemTodo ) {
+function viewRevealTodo(obj: { filePath: string, lineNr: number, todo?: string, rawLine?: string }) {
 
-  if ( todo.obj.todo ) {
+  if (obj.todo && obj.rawLine) {
 
-    const startIndex = todo.obj.rawLine.indexOf ( todo.obj.todo ),
-          endIndex = startIndex + todo.obj.todo.length;
+    const startIndex = obj.rawLine.indexOf(obj.todo),
+      endIndex = startIndex + obj.todo.length;
 
-    Utils.file.open ( todo.obj.filePath, true, todo.obj.lineNr, startIndex, endIndex );
+    Utils.file.open(obj.filePath, true, obj.lineNr, startIndex, endIndex);
 
   } else {
 
-    Utils.file.open ( todo.obj.filePath, true, todo.obj.lineNr );
+    Utils.file.open(obj.filePath, true, obj.lineNr);
 
   }
 
@@ -211,77 +211,77 @@ function viewRevealTodo ( todo: ItemTodo ) {
 
 /* VIEW FILE */
 
-function viewFilesOpen () {
-  open ();
+function viewFilesOpen() {
+  open();
 }
 
-function viewFilesCollapse () {
+function viewFilesCollapse() {
   ViewFiles.expanded = false;
-  vscode.commands.executeCommand ( 'setContext', 'todo-files-expanded', false );
-  ViewFiles.refresh ( true );
+  vscode.commands.executeCommand('setContext', 'todo-files-expanded', false);
+  ViewFiles.refresh(true);
 }
 
-function viewFilesExpand () {
+function viewFilesExpand() {
   ViewFiles.expanded = true;
-  vscode.commands.executeCommand ( 'setContext', 'todo-files-expanded', true );
-  ViewFiles.refresh ( true );
+  vscode.commands.executeCommand('setContext', 'todo-files-expanded', true);
+  ViewFiles.refresh(true);
 }
 
 /* VIEW EMBEDDED */
 
-function viewEmbeddedCollapse () {
+function viewEmbeddedCollapse() {
   ViewEmbedded.expanded = false;
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-expanded', false );
-  ViewEmbedded.refresh ( true );
+  vscode.commands.executeCommand('setContext', 'todo-embedded-expanded', false);
+  ViewEmbedded.refresh(true);
 }
 
-function viewEmbeddedExpand () {
+function viewEmbeddedExpand() {
   ViewEmbedded.expanded = true;
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-expanded', true );
-  ViewEmbedded.refresh ( true );
+  vscode.commands.executeCommand('setContext', 'todo-embedded-expanded', true);
+  ViewEmbedded.refresh(true);
 }
 
-async function viewEmbeddedFilter () {
+async function viewEmbeddedFilter() {
 
-  const filter = await vscode.window.showInputBox ({ placeHolder: 'Filter string...' });
+  const filter = await vscode.window.showInputBox({ placeHolder: 'Filter string...' });
 
-  if ( !filter || ViewEmbedded.filter === filter ) return;
+  if (!filter || ViewEmbedded.filter === filter) return;
 
   ViewEmbedded.filter = filter;
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-filtered', true );
-  ViewEmbedded.refresh ();
+  vscode.commands.executeCommand('setContext', 'todo-embedded-filtered', true);
+  ViewEmbedded.refresh();
 
 }
 
 const embeddedFilter = viewEmbeddedFilter;
 
-function viewEmbeddedClearFilter () {
+function viewEmbeddedClearFilter() {
   ViewEmbedded.filter = false;
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-filtered', false );
-  ViewEmbedded.refresh ();
+  vscode.commands.executeCommand('setContext', 'todo-embedded-filtered', false);
+  ViewEmbedded.refresh();
 }
 
 const embeddedClearFilter = viewEmbeddedClearFilter;
 
-function viewEmbeddedToggleAllFiles ( force: boolean = !ViewEmbedded.all ) {
+function viewEmbeddedToggleAllFiles(force: boolean = !ViewEmbedded.all) {
   ViewEmbedded.all = force;
-  vscode.commands.executeCommand ( 'setContext', 'todo-embedded-all', force );
-  ViewEmbedded.refresh ();
+  vscode.commands.executeCommand('setContext', 'todo-embedded-all', force);
+  ViewEmbedded.refresh();
 }
 
-function viewEmbeddedShowAllFiles () {
+function viewEmbeddedShowAllFiles() {
 
-  viewEmbeddedToggleAllFiles ( true );
+  viewEmbeddedToggleAllFiles(true);
 
 }
 
-function viewEmbeddedShowActiveFile () {
+function viewEmbeddedShowActiveFile() {
 
-  viewEmbeddedToggleAllFiles ( false );
+  viewEmbeddedToggleAllFiles(false);
 
 }
 
 /* EXPORT */
 
-export {open, openEmbedded, toggleBox, toggleDone, toggleCancelled, toggleStart, toggleTimer, archive, viewOpenFile, viewRevealTodo, viewFilesOpen, viewFilesCollapse, viewFilesExpand, viewEmbeddedCollapse, viewEmbeddedExpand, viewEmbeddedFilter, embeddedFilter, viewEmbeddedClearFilter, embeddedClearFilter, viewEmbeddedToggleAllFiles, viewEmbeddedShowAllFiles, viewEmbeddedShowActiveFile};
-export {toggleBox as editorToggleBox, toggleDone as editorToggleDone, toggleCancelled as editorToggleCancelled, toggleStart as editorToggleStart, archive as editorArchive}
+export { open, openEmbedded, toggleBox, toggleDone, toggleCancelled, toggleStart, toggleTimer, archive, viewOpenFile, viewRevealTodo, viewFilesOpen, viewFilesCollapse, viewFilesExpand, viewEmbeddedCollapse, viewEmbeddedExpand, viewEmbeddedFilter, embeddedFilter, viewEmbeddedClearFilter, embeddedClearFilter, viewEmbeddedToggleAllFiles, viewEmbeddedShowAllFiles, viewEmbeddedShowActiveFile };
+export { toggleBox as editorToggleBox, toggleDone as editorToggleDone, toggleCancelled as editorToggleCancelled, toggleStart as editorToggleStart, archive as editorArchive }

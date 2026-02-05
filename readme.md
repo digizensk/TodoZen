@@ -1,4 +1,6 @@
-# Todo+
+# TodoZen
+
+> **Fork Notice**: This is a fork of [Todo+](https://github.com/fabiospampinato/vscode-todo-plus) by [Fabio Spampinato](https://github.com/fabiospampinato) with performance improvements (ripgrep integration). All credit for the original extension goes to the original author.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/fabiospampinato/vscode-todo-plus/master/resources/logo/logo.png" width="128" alt="Logo">

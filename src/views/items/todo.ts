@@ -9,20 +9,25 @@ class Todo extends Item {
 
   contextValue = 'todo';
 
-  constructor ( obj, label, icon = false ) {
+  constructor(obj, label, icon = false) {
 
-    super ( obj, label );
+    super(obj, label);
 
     this.tooltip = obj.code || obj.line;
 
     this.command = {
       title: 'Reveal',
       command: 'todo.viewRevealTodo',
-      arguments: [this]
+      arguments: [{
+        filePath: obj.filePath,
+        lineNr: obj.lineNr,
+        todo: obj.todo,
+        rawLine: obj.rawLine
+      }]
     };
 
-    if ( icon ) {
-      this.setTypeIcon ( obj.type );
+    if (icon) {
+      this.setTypeIcon(obj.type);
     }
 
   }
